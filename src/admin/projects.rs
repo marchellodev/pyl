@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use rocksdb::DB;
 
 #[derive(Serialize, Deserialize)]
-struct Project {
+pub struct Project {
     /// Project title
     name: String,
     /// Unique identifier
@@ -18,16 +18,30 @@ impl Project {
         let data: Vec<Project> = match rock.get(b"projects") {
             Ok(Some(value)) => bincode::deserialize(&*value).unwrap(),
             Ok(None) => vec![],
-            // todo we should probably not just panic when encountering a problem
             Err(e) => panic!("operational problem encountered: {}", e),
         };
         data
     }
 
-    pub fn add(rock: &DB, data: Project) {
-        let mut existing = Project::list(&rock);
-        existing.push(data);
-        rock.put(b"projects", bincode::serialize(&existing).unwrap()).unwrap();
+    pub fn create(rock: &DB, data: Project) {
+        if !rock.key_may_exist(b"projects") {
+            rock.put(b"projects", bincode::serialize(&vec![data]).unwrap()).unwrap();
+        } else {
+            rock.merge(b"projects", bincode::serialize(&data).unwrap()).unwrap();
+        }
+    }
+
+    pub fn delete(rock: &DB, data: Uuid) -> bool {
+        let mut list = Project::list(&rock);
+
+        let index = list.iter().position(|x| x.key == data);
+        if index.is_none() {
+            return false;
+        }
+        list.remove(index.unwrap());
+
+        rock.put(b"projects", bincode::serialize(&list).unwrap()).unwrap();
+        true
     }
 }
 
@@ -37,20 +51,17 @@ pub struct ProjectCreateData {
     name: String,
 }
 
-pub async fn create(info: web::Json<ProjectCreateData>, db: Data<RockWrapper>) -> impl Responder {
-    println!("Creating a project record");
-    println!("Project name: {}", info.name);
-
+pub async fn create(db: Data<RockWrapper>, data: web::Json<ProjectCreateData>) -> HttpResponse {
     let project = Project {
-        name: info.name.clone(),
+        name: data.name.clone(),
         key: Uuid::new_v4(),
     };
-    Project::add(&db.db, project);
+    Project::create(&db.db, project);
 
-    info.name.clone()
+    HttpResponse::Ok().finish()
 }
 
-pub async fn list(_req: HttpRequest, db: Data<RockWrapper>) -> Result<HttpResponse, actix_web::Error> {
+pub async fn list(db: Data<RockWrapper>) -> Result<HttpResponse, actix_web::Error> {
     let list = Project::list(&db.db);
 
     Ok(HttpResponse::Ok().json(list))
@@ -60,6 +71,17 @@ pub async fn edit() -> impl Responder {
     "1321"
 }
 
-pub async fn delete() -> impl Responder {
-    "123"
+#[derive(Deserialize)]
+pub struct ProjectDeleteData {
+    key: String,
+}
+
+pub async fn delete(db: Data<RockWrapper>, data: web::Json<ProjectDeleteData>) -> HttpResponse {
+    let uuid = Uuid::parse_str(data.key.as_str());
+
+    if uuid.is_err() || !Project::delete(&db.db, uuid.unwrap()) {
+        return HttpResponse::BadRequest().finish();
+    }
+
+    HttpResponse::Ok().finish()
 }
