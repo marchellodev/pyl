@@ -15,6 +15,7 @@ pub struct Project {
 
 impl Project {
     pub fn list(rock: &DB) -> Vec<Project> {
+        // TODO store the rocksdb key as a constant
         let data: Vec<Project> = match rock.get(b"projects") {
             Ok(Some(value)) => bincode::deserialize(&*value).unwrap(),
             Ok(None) => vec![],
@@ -81,7 +82,6 @@ pub async fn list(db: Data<RockWrapper>) -> Result<HttpResponse, actix_web::Erro
 }
 
 pub async fn edit(db: Data<RockWrapper>, data: web::Json<Project>) -> impl Responder {
-
     if !Project::edit(&db.db, data.into_inner()) {
         return HttpResponse::BadRequest().finish();
     }
@@ -91,6 +91,7 @@ pub async fn edit(db: Data<RockWrapper>, data: web::Json<Project>) -> impl Respo
 
 #[derive(Deserialize)]
 pub struct ProjectDeleteData {
+    // todo maybe UUID?
     key: String,
 }
 
