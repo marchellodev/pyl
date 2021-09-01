@@ -3,18 +3,23 @@ use rocksdb::{DB, Options, MergeOperands};
 use std::sync::Arc;
 use dotenv::dotenv;
 use std::env;
+use argon2::Config;
+use jsonwebtoken::EncodingKey;
 
 mod router;
 mod admin;
 
+// todo critical salt can be to short
 // todo have those structs in a separate file
 #[derive(Clone)]
 pub struct RockWrapper {
     db: Arc<DB>,
 }
 
-pub struct Env {
-    hash_salt: String,
+pub struct Env<'a> {
+    argon2_salt: String,
+    argon2_config: Config<'a>,
+    jwt_secret: EncodingKey,
 }
 
 impl RockWrapper {
@@ -61,22 +66,27 @@ async fn main() -> std::io::Result<()> {
 
     dotenv().ok();
 
-    let mut hash_salt = String::from("");
+    // todo wut is this
+    // todo tests pls
+    let mut argon2_salt = String::from("");
+    let mut jwt_secret = String::from("");
 
     for (key, value) in env::vars() {
-        if key == "HASH_SALT" {
-            hash_salt = value;
+        if key == "ARGON2_SALT" {
+            argon2_salt = value;
+        } else if key == "JWT_SECRET" {
+            jwt_secret = value;
         }
     }
 
-    if hash_salt == "" {
-        panic!("HASH SALT CANNOT BE NULL IN the .env file");
+    if argon2_salt == "" || jwt_secret == "" {
+        panic!("ARGON2_SALT OR/AND JWT_SECRET CANNOT BE NULL IN the .env file");
     }
 
     HttpServer::new(move || {
         App::new()
             .data(db.clone())
-            .data(Env { hash_salt: hash_salt.clone() })
+            .data(Env { argon2_salt: argon2_salt.clone(), argon2_config: Config::default(), jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()) })
             .configure(router::router)
     })
         .bind("127.0.0.1:8080")?

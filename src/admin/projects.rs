@@ -14,9 +14,10 @@ pub struct Project {
 }
 
 impl Project {
+    const DB_TABLE_NAME: &'static str = "projects";
+
     pub fn list(rock: &DB) -> Vec<Project> {
-        // TODO store the rocksdb key as a constant
-        let data: Vec<Project> = match rock.get(b"projects") {
+        let data: Vec<Project> = match rock.get(Project::DB_TABLE_NAME) {
             Ok(Some(value)) => bincode::deserialize(&*value).unwrap(),
             Ok(None) => vec![],
             Err(e) => panic!("operational problem encountered: {}", e),
@@ -25,10 +26,10 @@ impl Project {
     }
 
     pub fn create(rock: &DB, data: Project) {
-        if !rock.key_may_exist(b"projects") {
-            rock.put(b"projects", bincode::serialize(&vec![data]).unwrap()).unwrap();
+        if !rock.key_may_exist(Project::DB_TABLE_NAME) {
+            rock.put(Project::DB_TABLE_NAME, bincode::serialize(&vec![data]).unwrap()).unwrap();
         } else {
-            rock.merge(b"projects", bincode::serialize(&data).unwrap()).unwrap();
+            rock.merge(Project::DB_TABLE_NAME, bincode::serialize(&data).unwrap()).unwrap();
         }
     }
 
@@ -41,7 +42,7 @@ impl Project {
         }
         list.remove(index.unwrap());
 
-        rock.put(b"projects", bincode::serialize(&list).unwrap()).unwrap();
+        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap()).unwrap();
         true
     }
 
@@ -54,7 +55,7 @@ impl Project {
         }
         list[index.unwrap()] = data;
 
-        rock.put(b"projects", bincode::serialize(&list).unwrap()).unwrap();
+        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap()).unwrap();
         true
     }
 }
@@ -95,6 +96,7 @@ pub struct ProjectDeleteData {
     key: String,
 }
 
+// TODO async?
 pub async fn delete(db: Data<RockWrapper>, data: web::Json<ProjectDeleteData>) -> HttpResponse {
     let uuid = Uuid::parse_str(data.key.as_str());
 
