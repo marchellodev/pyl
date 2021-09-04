@@ -67,29 +67,6 @@ struct UserAuthToken {
     exp: u64,
 }
 
-#[cfg(test)]
-mod tests {
-    use argon2::{self, Config};
-    use crate::admin::users::UserAuthToken;
-    use jsonwebtoken::{encode, Header, EncodingKey, decode, DecodingKey, Validation};
-    use std::time::{SystemTime, UNIX_EPOCH};
-
-    #[test]
-    fn jwt() {
-        let token_data = UserAuthToken {
-            login: String::from("mark"),
-            exp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs(),
-        };
-
-        let jwt = encode(&Header::default(), &token_data, &EncodingKey::from_secret("123".as_ref())).unwrap();
-
-        let token = decode::<UserAuthToken>(&jwt, &DecodingKey::from_secret("123".as_ref()), &Validation::default()).unwrap();
-
-        println!("JWT token: {}", jwt);
-        println!("Login: {}", token.claims.login);
-    }
-}
-
 impl User {
     const DB_TABLE_NAME: &'static str = "users";
 

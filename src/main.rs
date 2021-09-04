@@ -16,6 +16,7 @@ pub struct RockWrapper {
     db: Arc<DB>,
 }
 
+#[derive(Clone)]
 pub struct Env<'a> {
     argon2_salt: String,
     argon2_config: Config<'a>,
@@ -63,11 +64,22 @@ impl RockWrapper {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let db = RockWrapper::init("rock");
+    let env = validate_env();
 
+    HttpServer::new(move || {
+        App::new()
+            .data(db.clone())
+            .data(env.clone())
+            .configure(router::router)
+    })
+        .bind("127.0.0.1:8080")?
+        .run()
+        .await
+}
+
+fn validate_env() -> Env<'static> {
     dotenv().ok();
 
-    // todo wut is this
-    // todo tests pls
     let mut argon2_salt = String::from("");
     let mut jwt_secret = String::from("");
 
@@ -83,33 +95,9 @@ async fn main() -> std::io::Result<()> {
         panic!("ARGON2_SALT OR/AND JWT_SECRET CANNOT BE NULL IN the .env file");
     }
 
-    HttpServer::new(move || {
-        App::new()
-            .data(db.clone())
-            .data(Env { argon2_salt: argon2_salt.clone(), argon2_config: Config::default(), jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()) })
-            .configure(router::router)
-    })
-        .bind("127.0.0.1:8080")?
-        .run()
-        .await
-}
-
-
-#[cfg(test)]
-mod tests {
-    use argon2::{self, Config};
-
-    #[test]
-    fn test_add() {
-        let password = b"password";
-        let salt = b"randomsalt123213";
-        let config = Config::default();
-        let hash = argon2::hash_encoded(password, salt, &config).unwrap();
-        println!("{}", hash);
-        let matches = argon2::verify_encoded(&hash, password).unwrap();
-        assert!(matches);
+    if argon2_salt.len() < 8 || jwt_secret.len() < 8 {
+        panic!(".env VALUES ARE TOO SHORT");
     }
-}
 
-// $argon2i$v=19$m=4096,t=3,p=1$cmFuZG9tc2FsdDEyMzIxMw$GfsiiLMx7lmkmU1RTjm2rKZGWS8NTidC6RA7C40kBMU
-// $argon2i$v=19$m=4096,t=3,p=1$cmFuZG9tc2FsdDEyMzIxMw$GfsiiLMx7lmkmU1RTjm2rKZGWS8NTidC6RA7C40kBMU
+    Env { argon2_salt: argon2_salt.clone(), argon2_config: Config::default(), jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()) }
+}
