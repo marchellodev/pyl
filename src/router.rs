@@ -1,4 +1,4 @@
-use actix_web::{web};
+use actix_web::web;
 
 use crate::admin::*;
 
@@ -17,19 +17,22 @@ pub fn router(cfg: &mut web::ServiceConfig) {
 
     cfg.service(
         web::scope("/api")
-            .service(web::scope("/admin")
-                .service(web::resource("/projects")
-                    .route(web::put().to(projects::routes::create))
-                    .route(web::get().to(projects::routes::list))
-                    .route(web::post().to(projects::routes::edit))
-                    .route(web::delete().to(projects::routes::delete))
-                )
-                .service(web::resource("/users")
-                    .route(web::post().to(users::routes::login))
-                    .route(web::put().to(users::routes::create))
-                )
+            .service(
+                web::scope("/admin")
+                    .service(
+                        web::resource("/projects")
+                            .route(web::put().to(projects::routes::create))
+                            .route(web::get().to(projects::routes::list))
+                            .route(web::post().to(projects::routes::edit))
+                            .route(web::delete().to(projects::routes::delete)),
+                    )
+                    .service(
+                        web::resource("/users")
+                            .route(web::post().to(users::routes::login))
+                            .route(web::put().to(users::routes::create)),
+                    ),
             )
             .service(web::scope("/data"))
-            .service(web::scope("/tracking"))
+            .service(web::scope("/tracking")),
     );
 }

@@ -1,8 +1,9 @@
-use serde::{Deserialize};
-use actix_web::{web, HttpResponse};
 use actix_web::web::Data;
+use actix_web::{web, HttpResponse};
+use serde::Deserialize;
+
+use crate::admin::users::{User, UserScope};
 use crate::s_env::{Env, RockWrapper};
-use crate::admin::users::{UserScope, User};
 
 #[derive(Deserialize)]
 pub struct LoginData {
@@ -16,7 +17,7 @@ pub fn login(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<LoginData>) 
 
     match result {
         None => HttpResponse::Unauthorized().finish(),
-        Some(data) => HttpResponse::Ok().json(data)
+        Some(data) => HttpResponse::Ok().json(data),
     }
 }
 
@@ -35,7 +36,6 @@ pub fn create(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<CreateData>
     }
 
     let created = User::create(&db.db, &env, &data.login, &data.password, UserScope::All);
-
 
     if !created {
         return HttpResponse::Conflict().finish();

@@ -1,14 +1,14 @@
-pub mod routes;
-
 use rocksdb::DB;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+pub mod routes;
 
 #[derive(Serialize, Deserialize)]
 pub struct Project {
     /// Project title
     name: String,
+
     /// Unique identifier
     key: Uuid,
 }
