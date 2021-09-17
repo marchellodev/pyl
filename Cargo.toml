@@ -16,3 +16,5 @@ rust-argon2 = "0.8"
 dotenv = "0.15.0"
 jsonwebtoken = "7"
 
+log = "0.4.14"
+log4rs = { version = "1.0.0", features = ["background_rotation"] }

@@ -2,13 +2,11 @@ use uuid::Uuid;
 use rocksdb::DB;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use argon2::Config;
-use crate::{RockWrapper, Env};
 use actix_web::{web, HttpResponse};
 use actix_web::web::Data;
-use jsonwebtoken::{encode, Header, EncodingKey};
-use std::time::{SystemTime, UNIX_EPOCH, Duration};
-use std::ops::Add;
+use jsonwebtoken::{encode, Header};
+use std::time::{SystemTime, UNIX_EPOCH};
+use crate::s_env::{Env, RockWrapper};
 
 #[derive(Serialize, Deserialize)]
 pub struct User {

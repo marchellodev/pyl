@@ -1,70 +1,15 @@
 use actix_web::{App, HttpServer};
-use rocksdb::{DB, Options, MergeOperands};
-use std::sync::Arc;
-use dotenv::dotenv;
-use std::env;
-use argon2::Config;
-use jsonwebtoken::EncodingKey;
 
 mod router;
 mod admin;
-
-// todo critical salt can be to short
-// todo have those structs in a separate file
-#[derive(Clone)]
-pub struct RockWrapper {
-    db: Arc<DB>,
-}
-
-#[derive(Clone)]
-pub struct Env<'a> {
-    argon2_salt: String,
-    argon2_config: Config<'a>,
-    jwt_secret: EncodingKey,
-}
-
-impl RockWrapper {
-    fn init(file_path: &str) -> Self {
-        let mut opts = Options::default();
-        opts.set_merge_operator_associative("test operator", RockWrapper::concat_merge);
-        opts.create_if_missing(true);
-
-        RockWrapper { db: Arc::new(DB::open(&opts, file_path).unwrap()) }
-    }
-
-    fn concat_merge(new_key: &[u8],
-                    existing_val: Option<&[u8]>,
-                    operands: &mut MergeOperands)
-                    -> Option<Vec<u8>> {
-        println!("MERGING!!!");
-
-        if new_key == b"projects" {
-            // todo move it to the project struct ?
-            let mut result: Vec<admin::projects::Project> = bincode::deserialize(existing_val.unwrap_or(&[])).unwrap();
-
-            for op in operands {
-                // let arr: Vec<admin::projects::Project> = bincode::deserialize(op).unwrap();
-                //
-                // for x in arr {
-                //     result.push(x);
-                // }
-
-                let val: admin::projects::Project = bincode::deserialize(op).unwrap();
-
-                result.push(val);
-            }
-
-            return Some(bincode::serialize(&result).unwrap());
-        }
-
-        panic!("UNIMPLEMENTED MERGE KEY:");
-    }
-}
+mod s_env;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    let db = RockWrapper::init("rock");
-    let env = validate_env();
+    s_env::init_logging();
+
+    let db = s_env::RockWrapper::init("rock");
+    let env = s_env::validate_env();
 
     HttpServer::new(move || {
         App::new()
@@ -75,29 +20,4 @@ async fn main() -> std::io::Result<()> {
         .bind("127.0.0.1:8080")?
         .run()
         .await
-}
-
-fn validate_env() -> Env<'static> {
-    dotenv().ok();
-
-    let mut argon2_salt = String::from("");
-    let mut jwt_secret = String::from("");
-
-    for (key, value) in env::vars() {
-        if key == "ARGON2_SALT" {
-            argon2_salt = value;
-        } else if key == "JWT_SECRET" {
-            jwt_secret = value;
-        }
-    }
-
-    if argon2_salt == "" || jwt_secret == "" {
-        panic!("ARGON2_SALT OR/AND JWT_SECRET CANNOT BE NULL IN the .env file");
-    }
-
-    if argon2_salt.len() < 8 || jwt_secret.len() < 8 {
-        panic!(".env VALUES ARE TOO SHORT");
-    }
-
-    Env { argon2_salt: argon2_salt.clone(), argon2_config: Config::default(), jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()) }
 }
