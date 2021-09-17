@@ -1,19 +1,23 @@
-use uuid::Uuid;
+use std::time::{SystemTime, UNIX_EPOCH};
+
+use jsonwebtoken::{encode, Header};
 use rocksdb::DB;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use actix_web::{web, HttpResponse};
-use actix_web::web::Data;
-use jsonwebtoken::{encode, Header};
-use std::time::{SystemTime, UNIX_EPOCH};
-use crate::s_env::{Env, RockWrapper};
+use uuid::Uuid;
+
+use crate::s_env::Env;
+
+pub mod routes;
+
 
 #[derive(Serialize, Deserialize)]
-pub struct User {
+struct User {
     login: String,
     password: String,
     scope: UserScope,
 }
+
 
 #[derive(Serialize, Deserialize)]
 enum UserScope {
@@ -30,40 +34,13 @@ enum UserScope {
     Read(Vec<Uuid>),
 }
 
-impl UserScope {
-    fn parse(data: &str) -> Option<UserScope> {
-        if data == "all" {
-            return Some(UserScope::All);
-        }
-
-        if data == "read_all" {
-            return Some(UserScope::ReadAll);
-        }
-
-        if data.starts_with("read:") {
-            let data = data.replacen("read:", "", 1);
-
-            let mut list = vec![];
-            for el in data.split_terminator(",") {
-                let el = Uuid::parse_str(el);
-                if el.is_err() {
-                    return None;
-                }
-                list.push(el.unwrap());
-            }
-
-            return Some(UserScope::Read(list));
-        }
-
-        None
-    }
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 struct UserAuthToken {
     login: String,
     exp: u64,
 }
+
 
 impl User {
     const DB_TABLE_NAME: &'static str = "users";
@@ -130,42 +107,32 @@ impl User {
 }
 
 
-#[derive(Deserialize)]
-pub struct LoginData {
-    login: String,
-    password: String,
-}
+impl UserScope {
+    fn parse(data: &str) -> Option<UserScope> {
+        if data == "all" {
+            return Some(UserScope::All);
+        }
 
-// todo review error codes
-pub fn login(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<LoginData>) -> HttpResponse {
-    let result = User::login(&db.db, &env, &data.login, &data.password);
+        if data == "read_all" {
+            return Some(UserScope::ReadAll);
+        }
 
-    match result {
-        None => HttpResponse::Unauthorized().finish(),
-        Some(data) => HttpResponse::Ok().json(data)
+        if data.starts_with("read:") {
+            let data = data.replacen("read:", "", 1);
+
+            let mut list = vec![];
+            for el in data.split_terminator(",") {
+                let el = Uuid::parse_str(el);
+                if el.is_err() {
+                    return None;
+                }
+                list.push(el.unwrap());
+            }
+
+            return Some(UserScope::Read(list));
+        }
+
+        None
     }
 }
 
-#[derive(Deserialize)]
-pub struct CreateData {
-    login: String,
-    password: String,
-    scope: String,
-}
-
-pub fn create(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<CreateData>) -> HttpResponse {
-    let scope = UserScope::parse(&data.scope);
-
-    if scope.is_none() {
-        return HttpResponse::BadRequest().finish();
-    }
-
-    let created = User::create(&db.db, &env, &data.login, &data.password, UserScope::All);
-
-
-    if !created {
-        return HttpResponse::Conflict().finish();
-    }
-
-    HttpResponse::Ok().finish()
-}
