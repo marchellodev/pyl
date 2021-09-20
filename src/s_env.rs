@@ -19,7 +19,7 @@ pub struct RockWrapper {
 pub struct Env<'a> {
     pub(crate) argon2_salt: String,
     pub(crate) argon2_config: Config<'a>,
-    pub(crate) jwt_secret: EncodingKey,
+    pub(crate) jwt_secret: String,
 }
 
 impl RockWrapper {
@@ -86,7 +86,7 @@ pub fn validate_env() -> Env<'static> {
     Env {
         argon2_salt: argon2_salt.clone(),
         argon2_config: Config::default(),
-        jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()),
+        jwt_secret,
     }
 }
 

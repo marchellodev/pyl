@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use jsonwebtoken::{encode, Header};
+use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use rocksdb::DB;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -37,6 +37,10 @@ struct UserAuthToken {
     exp: u64,
 }
 
+pub fn verify_token(rock: &DB, env: &Env, token: &str) -> bool {
+    User::verify_token(&rock, &env, &token)
+}
+
 impl User {
     const DB_TABLE_NAME: &'static str = "users";
 
@@ -64,11 +68,29 @@ impl User {
                         + 3600 * 24 * 7,
                 };
 
-                let jwt = encode(&Header::default(), &token_data, &env.jwt_secret).unwrap();
+                let jwt = encode(
+                    &Header::default(),
+                    &token_data,
+                    &EncodingKey::from_secret(env.jwt_secret.as_bytes()),
+                )
+                .unwrap();
                 return Some(jwt);
             }
         }
         return None;
+    }
+
+    fn verify_token(rock: &DB, env: &Env, token: &str) -> bool {
+        let token = decode::<UserAuthToken>(
+            &token,
+            &DecodingKey::from_secret(env.jwt_secret.as_bytes()),
+            &Validation::default(),
+        );
+        if token.is_ok() {
+            return true;
+        }
+
+        return false;
     }
 
     fn list(rock: &DB) -> Vec<User> {

@@ -3,8 +3,12 @@ use std::task::{Context, Poll};
 use actix_service::{Service, Transform};
 use actix_web::dev::{ServiceRequest, ServiceResponse};
 use actix_web::http::Method;
+use actix_web::web::Data;
 use actix_web::{Error, HttpResponse};
 use futures::future::{ok, Either, Ready};
+
+use crate::admin::users::verify_token;
+use crate::s_env::{Env, RockWrapper};
 
 pub struct CheckLogin;
 
@@ -43,27 +47,27 @@ where
     }
 
     fn call(&mut self, req: ServiceRequest) -> Self::Future {
-        // We only need to hook into the `start` for this middleware.
-
-        println!("{}", req.path());
-        println!("{}", req.method());
+        // this is the authorization path
         if req.path() == "/api/admin/users" && req.method() == Method::POST {
             return Either::Left(self.service.call(req));
         }
 
         let auth = req.headers().get(actix_web::http::header::AUTHORIZATION);
-        // TODO verify token
-        println!("{:?}", auth);
 
-        let is_logged_in = true; // Change this to see the change in outcome in the browser
+        if auth.is_some() {
+            let auth = auth.unwrap().to_str().unwrap();
+            let auth = auth.replace("Bearer ", "");
 
-        if is_logged_in {
-            Either::Left(self.service.call(req))
-        } else {
-            Either::Right(ok(
-                req.into_response(HttpResponse::Unauthorized().finish().into_body())
-            ))
-            // Don't forward to /login if we are already on /login
+            let env = req.app_data::<Data<Env>>().unwrap();
+            let rock = req.app_data::<Data<RockWrapper>>().unwrap();
+
+            if verify_token(&rock.db, &env, &auth) {
+                return Either::Left(self.service.call(req));
+            }
         }
+
+        Either::Right(ok(
+            req.into_response(HttpResponse::Unauthorized().finish().into_body())
+        ))
     }
 }
