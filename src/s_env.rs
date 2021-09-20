@@ -4,14 +4,12 @@ use std::sync::Arc;
 use argon2::Config;
 use dotenv::dotenv;
 use jsonwebtoken::EncodingKey;
+use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;
 use log4rs::config::{Appender, Logger, Root};
-use log::LevelFilter;
-use rocksdb::{DB, Options};
+use rocksdb::{Options, DB};
 
-// todo critical salt can be to short
-// todo have those structs in a separate file
 #[derive(Clone)]
 pub struct RockWrapper {
     pub(crate) db: Arc<DB>,
@@ -30,7 +28,9 @@ impl RockWrapper {
         // opts.set_merge_operator_associative("test operator", RockWrapper::concat_merge);
         opts.create_if_missing(true);
 
-        RockWrapper { db: Arc::new(DB::open(&opts, file_path).unwrap()) }
+        RockWrapper {
+            db: Arc::new(DB::open(&opts, file_path).unwrap()),
+        }
     }
 
     // fn concat_merge(new_key: &[u8],
@@ -40,7 +40,6 @@ impl RockWrapper {
     //     println!("MERGING!!!");
     //
     //     if new_key == b"projects" {
-    //         // todo move it to the project struct ?
     //         let mut result: Vec<admin::projects::Project> = bincode::deserialize(existing_val.unwrap_or(&[])).unwrap();
     //
     //         for op in operands {
@@ -61,7 +60,6 @@ impl RockWrapper {
     //     panic!("UNIMPLEMENTED MERGE KEY:");
     // }
 }
-
 
 pub fn validate_env() -> Env<'static> {
     dotenv().ok();
@@ -85,27 +83,36 @@ pub fn validate_env() -> Env<'static> {
         panic!(".env VALUES ARE TOO SHORT");
     }
 
-    Env { argon2_salt: argon2_salt.clone(), argon2_config: Config::default(), jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()) }
+    Env {
+        argon2_salt: argon2_salt.clone(),
+        argon2_config: Config::default(),
+        jwt_secret: EncodingKey::from_secret(jwt_secret.as_bytes()),
+    }
 }
-
 
 pub fn init_logging() {
     let stdout = ConsoleAppender::builder().build();
 
-    let requests = FileAppender::builder()
-        .build("log/log.log")
-        .unwrap();
+    let requests = FileAppender::builder().build("log/log.log").unwrap();
 
     let config = log4rs::Config::builder()
         .appender(Appender::builder().build("stdout", Box::new(stdout)))
         .appender(Appender::builder().build("log", Box::new(requests)))
-        .logger(Logger::builder()
-            .appender("log")
-            .additive(true)
-            .build("log", LevelFilter::Info))
-        .build(Root::builder().appender("log").appender("stdout").build(LevelFilter::Warn))
+        .logger(
+            Logger::builder()
+                .appender("log")
+                .additive(true)
+                .build("log", LevelFilter::Info),
+        )
+        .build(
+            Root::builder()
+                .appender("log")
+                .appender("stdout")
+                .build(LevelFilter::Warn),
+        )
         .unwrap();
 
     let _ = log4rs::init_config(config).unwrap();
-}
 
+    log_panics::init();
+}

@@ -1,5 +1,5 @@
 use actix_web::web::Data;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -10,8 +10,7 @@ use crate::s_env::RockWrapper;
 pub struct ProjectCreateData {
     name: String,
 }
-
-pub async fn create(db: Data<RockWrapper>, data: web::Json<ProjectCreateData>) -> HttpResponse {
+pub fn create(db: Data<RockWrapper>, data: web::Json<ProjectCreateData>) -> HttpResponse {
     let project = Project {
         name: data.name.clone(),
         key: Uuid::new_v4(),
@@ -21,13 +20,13 @@ pub async fn create(db: Data<RockWrapper>, data: web::Json<ProjectCreateData>) -
     HttpResponse::Ok().finish()
 }
 
-pub async fn list(db: Data<RockWrapper>) -> Result<HttpResponse, actix_web::Error> {
+pub fn list(db: Data<RockWrapper>) -> HttpResponse {
     let list = Project::list(&db.db);
 
-    Ok(HttpResponse::Ok().json(list))
+    HttpResponse::Ok().json(list)
 }
 
-pub async fn edit(db: Data<RockWrapper>, data: web::Json<Project>) -> impl Responder {
+pub fn edit(db: Data<RockWrapper>, data: web::Json<Project>) -> HttpResponse {
     if !Project::edit(&db.db, data.into_inner()) {
         return HttpResponse::BadRequest().finish();
     }
@@ -37,15 +36,10 @@ pub async fn edit(db: Data<RockWrapper>, data: web::Json<Project>) -> impl Respo
 
 #[derive(Deserialize)]
 pub struct ProjectDeleteData {
-    // todo maybe UUID?
-    key: String,
+    key: Uuid,
 }
-
-// TODO async?
-pub async fn delete(db: Data<RockWrapper>, data: web::Json<ProjectDeleteData>) -> HttpResponse {
-    let uuid = Uuid::parse_str(data.key.as_str());
-
-    if uuid.is_err() || !Project::delete(&db.db, uuid.unwrap()) {
+pub fn delete(db: Data<RockWrapper>, data: web::Json<ProjectDeleteData>) -> HttpResponse {
+    if !Project::delete(&db.db, data.key) {
         return HttpResponse::BadRequest().finish();
     }
 

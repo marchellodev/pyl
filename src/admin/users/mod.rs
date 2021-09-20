@@ -3,13 +3,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use jsonwebtoken::{encode, Header};
 use rocksdb::DB;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::s_env::Env;
 
 pub mod routes;
-
 
 #[derive(Serialize, Deserialize)]
 struct User {
@@ -17,7 +15,6 @@ struct User {
     password: String,
     scope: UserScope,
 }
-
 
 #[derive(Serialize, Deserialize)]
 enum UserScope {
@@ -34,48 +31,51 @@ enum UserScope {
     Read(Vec<Uuid>),
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 struct UserAuthToken {
     login: String,
     exp: u64,
 }
 
-
 impl User {
     const DB_TABLE_NAME: &'static str = "users";
 
     /// Takes user login and password
     /// Returns the jwt auth token
-    /// TODO: figure out the lifespan of the token
-    fn login(rock: &DB, env: &Env, login: &str, password: &str) -> Option<Value> {
-        let password = argon2::hash_encoded(password.as_bytes(), env.argon2_salt.as_bytes(), &env.argon2_config).unwrap();
+    fn login(rock: &DB, env: &Env, login: &str, password: &str) -> Option<String> {
+        let password = argon2::hash_encoded(
+            password.as_bytes(),
+            env.argon2_salt.as_bytes(),
+            &env.argon2_config,
+        )
+        .unwrap();
 
-        // Get the db password for the user
         let users = User::list(&rock);
 
         for user in users {
             if user.login == login && user.password == password {
                 let token_data = UserAuthToken {
                     login: String::from(login),
-                    // The token works for two days
-                    exp: SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs() + 3600 * 24 * 2,
+                    // The token works for 7 days
+                    exp: SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs()
+                        + 3600 * 24 * 7,
                 };
 
                 let jwt = encode(&Header::default(), &token_data, &env.jwt_secret).unwrap();
-                return Some(json!({
-                    "token": jwt
-                }));
+                return Some(jwt);
             }
         }
         return None;
     }
 
     fn list(rock: &DB) -> Vec<User> {
-        let users = rock.get(User::DB_TABLE_NAME).unwrap().unwrap_or(vec![]);
-        let users: Vec<User> = bincode::deserialize(&users).unwrap_or(vec![]);
+        let list = rock.get(User::DB_TABLE_NAME).unwrap().unwrap_or(vec![]);
+        let list: Vec<User> = bincode::deserialize(&list).unwrap_or(vec![]);
 
-        users
+        list
     }
 
     /// If returns true, the user was created
@@ -83,29 +83,31 @@ impl User {
     fn create(rock: &DB, env: &Env, login: &str, password: &str, scope: UserScope) -> bool {
         let mut users = User::list(&rock);
 
-
         for user in &users {
             if login == user.login {
                 return false;
             }
         }
 
-        let password = argon2::hash_encoded(password.as_bytes(), env.argon2_salt.as_bytes(), &env.argon2_config).unwrap();
+        let password = argon2::hash_encoded(
+            password.as_bytes(),
+            env.argon2_salt.as_bytes(),
+            &env.argon2_config,
+        )
+        .unwrap();
 
         users.push(User {
-            // todo that's a weird syntax
             login: String::from(login),
             password,
             scope,
         });
 
-        rock.put(User::DB_TABLE_NAME, bincode::serialize(&users).unwrap());
-
+        rock.put(User::DB_TABLE_NAME, bincode::serialize(&users).unwrap())
+            .unwrap();
 
         return true;
     }
 }
-
 
 impl UserScope {
     fn parse(data: &str) -> Option<UserScope> {
@@ -135,4 +137,3 @@ impl UserScope {
         None
     }
 }
-

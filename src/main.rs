@@ -1,8 +1,11 @@
 use actix_web::{App, HttpServer};
 
-mod router;
 mod admin;
+mod router;
 mod s_env;
+
+// todo thorough testing
+// todo auth middleware
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -17,7 +20,7 @@ async fn main() -> std::io::Result<()> {
             .data(env.clone())
             .configure(router::router)
     })
-        .bind("127.0.0.1:8080")?
-        .run()
-        .await
+    .bind("127.0.0.1:8080")?
+    .run()
+    .await
 }

@@ -1,6 +1,7 @@
 use actix_web::web::Data;
 use actix_web::{web, HttpResponse};
 use serde::Deserialize;
+use serde_json::json;
 
 use crate::admin::users::{User, UserScope};
 use crate::s_env::{Env, RockWrapper};
@@ -11,13 +12,12 @@ pub struct LoginData {
     password: String,
 }
 
-// todo review error codes
 pub fn login(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<LoginData>) -> HttpResponse {
     let result = User::login(&db.db, &env, &data.login, &data.password);
 
     match result {
         None => HttpResponse::Unauthorized().finish(),
-        Some(data) => HttpResponse::Ok().json(data),
+        Some(data) => HttpResponse::Ok().json(json!({ "token": data })),
     }
 }
 

@@ -17,20 +17,19 @@ impl Project {
     const DB_TABLE_NAME: &'static str = "projects";
 
     fn list(rock: &DB) -> Vec<Project> {
-        let data: Vec<Project> = match rock.get(Project::DB_TABLE_NAME) {
-            Ok(Some(value)) => bincode::deserialize(&*value).unwrap(),
-            Ok(None) => vec![],
-            Err(e) => panic!("operational problem encountered: {}", e),
-        };
-        data
+        let list = rock.get(Project::DB_TABLE_NAME).unwrap().unwrap_or(vec![]);
+        let list: Vec<Project> = bincode::deserialize(&list).unwrap_or(vec![]);
+
+        list
     }
 
+    // todo check if the project with this id already exists
     fn create(rock: &DB, data: Project) {
-        if !rock.key_may_exist(Project::DB_TABLE_NAME) {
-            rock.put(Project::DB_TABLE_NAME, bincode::serialize(&vec![data]).unwrap()).unwrap();
-        } else {
-            rock.merge(Project::DB_TABLE_NAME, bincode::serialize(&data).unwrap()).unwrap();
-        }
+        let mut list = Project::list(&rock);
+        list.push(data);
+
+        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap())
+            .unwrap();
     }
 
     fn delete(rock: &DB, data: Uuid) -> bool {
@@ -42,7 +41,9 @@ impl Project {
         }
         list.remove(index.unwrap());
 
-        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap()).unwrap();
+        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap())
+            .unwrap();
+
         true
     }
 
@@ -55,8 +56,9 @@ impl Project {
         }
         list[index.unwrap()] = data;
 
-        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap()).unwrap();
+        rock.put(Project::DB_TABLE_NAME, bincode::serialize(&list).unwrap())
+            .unwrap();
+
         true
     }
 }
-
