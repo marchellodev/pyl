@@ -8,6 +8,9 @@ edition = "2018"
 [dependencies]
 rocksdb = { version = "0.17.0", default-features = false, features = ["lz4", "multi-threaded-cf"] }
 actix-web = "3"
+futures = "0.3.1"
+actix-service = "1"
+
 uuid = { version = "0.8", features = ["serde", "v4"] }
 bincode = "1.3.3"
 serde = { version = "1.0", features = ["derive"] }

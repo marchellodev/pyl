@@ -19,6 +19,7 @@ pub fn router(cfg: &mut web::ServiceConfig) {
         web::scope("/api")
             .service(
                 web::scope("/admin")
+                    .wrap(middleware::CheckLogin)
                     .service(
                         web::resource("/projects")
                             .route(web::put().to(projects::routes::create))
