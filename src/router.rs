@@ -30,6 +30,7 @@ pub fn router(cfg: &mut web::ServiceConfig) {
                     .service(
                         web::resource("/users")
                             .route(web::post().to(users::routes::login))
+                            .route(web::get().to(users::routes::list))
                             .route(web::put().to(users::routes::create)),
                     ),
             )

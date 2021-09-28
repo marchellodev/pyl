@@ -9,11 +9,6 @@ use crate::s_env::Env;
 
 pub mod routes;
 
-// todo list users
-// todo edit users
-// todo delete users
-// todo implement user access scope
-
 #[derive(Serialize, Deserialize)]
 struct User {
     login: String,
@@ -21,7 +16,7 @@ struct User {
     scope: UserScope,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq)]
 enum UserScope {
     /// The user can do everything: read/edit/add analytics data & read/change settings
     /// The default user `admin` is created with this value
@@ -85,7 +80,7 @@ impl User {
         return None;
     }
 
-    fn verify_token(rock: &DB, env: &Env, token: &str) -> bool {
+    fn verify_token(_rock: &DB, env: &Env, token: &str) -> bool {
         let token = decode::<UserAuthToken>(
             &token,
             &DecodingKey::from_secret(env.jwt_secret.as_bytes()),
@@ -137,7 +132,7 @@ impl User {
 }
 
 impl UserScope {
-    fn parse(data: &str) -> Option<UserScope> {
+    fn str_to_scope(data: &str) -> Option<UserScope> {
         if data == "all" {
             return Some(UserScope::All);
         }
@@ -162,5 +157,25 @@ impl UserScope {
         }
 
         None
+    }
+
+    fn scope_to_str(&self) -> String {
+        if *self == UserScope::All {
+            return "all".to_string();
+        }
+
+        if *self == UserScope::ReadAll {
+            return "read_all".to_string();
+        }
+        if let UserScope::Read(list) = self {
+            return "read:".to_string()
+                + &list
+                    .iter()
+                    .map(|val| val.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",");
+        }
+        // TODO return and handle none instead
+        return "".to_string();
     }
 }

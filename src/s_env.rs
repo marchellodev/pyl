@@ -3,7 +3,6 @@ use std::sync::Arc;
 
 use argon2::Config;
 use dotenv::dotenv;
-use jsonwebtoken::EncodingKey;
 use log::LevelFilter;
 use log4rs::append::console::ConsoleAppender;
 use log4rs::append::file::FileAppender;

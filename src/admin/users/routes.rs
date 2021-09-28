@@ -1,10 +1,15 @@
 use actix_web::web::Data;
 use actix_web::{web, HttpResponse};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 
 use crate::admin::users::{User, UserScope};
 use crate::s_env::{Env, RockWrapper};
+
+// todo list users
+// todo edit users
+// todo delete users
+// todo implement user access scope
 
 #[derive(Deserialize)]
 pub struct LoginData {
@@ -29,7 +34,7 @@ pub struct CreateData {
 }
 
 pub fn create(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<CreateData>) -> HttpResponse {
-    let scope = UserScope::parse(&data.scope);
+    let scope = UserScope::str_to_scope(&data.scope);
 
     if scope.is_none() {
         return HttpResponse::BadRequest().finish();
@@ -42,4 +47,24 @@ pub fn create(env: Data<Env>, db: Data<RockWrapper>, data: web::Json<CreateData>
     }
 
     HttpResponse::Ok().finish()
+}
+
+#[derive(Serialize)]
+struct UserReadOnly {
+    login: String,
+    scope: String,
+}
+
+pub fn list(db: Data<RockWrapper>) -> HttpResponse {
+    let data = User::list(&db.db);
+    let mut result: Vec<UserReadOnly> = vec![];
+
+    for val in data {
+        result.push(UserReadOnly {
+            login: val.login,
+            scope: val.scope.scope_to_str(),
+        })
+    }
+
+    HttpResponse::Ok().json(result)
 }
