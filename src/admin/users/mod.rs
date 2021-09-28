@@ -9,6 +9,11 @@ use crate::s_env::Env;
 
 pub mod routes;
 
+// todo list users
+// todo edit users
+// todo delete users
+// todo implement user access scope
+
 #[derive(Serialize, Deserialize)]
 struct User {
     login: String,

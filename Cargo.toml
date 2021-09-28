@@ -22,3 +22,7 @@ jsonwebtoken = "7"
 log = "0.4.14"
 log4rs = { version = "1.0.0", features = ["background_rotation"] }
 log-panics = "2.0.0"
+
+wasmer = "2.0"
+wasmer-compiler-cranelift = "2.0"
+wasmer-engine-universal = "2.0"
