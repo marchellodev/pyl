@@ -129,6 +129,21 @@ impl User {
 
         return true;
     }
+
+    fn delete(rock: &DB, login: &str) -> bool {
+        let mut list = User::list(&rock);
+
+        let index = list.iter().position(|x| x.login == login);
+        if index.is_none() {
+            return false;
+        }
+        list.remove(index.unwrap());
+
+        rock.put(User::DB_TABLE_NAME, bincode::serialize(&list).unwrap())
+            .unwrap();
+
+        true
+    }
 }
 
 impl UserScope {

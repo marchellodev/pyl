@@ -32,6 +32,8 @@ pub struct CheckLoginMiddleware<S> {
     service: S,
 }
 
+// TODO CHECK IF THE USER ACTUALLY EXISTS & WRITE THAT TO APP STATE
+
 impl<S, B> Service for CheckLoginMiddleware<S>
 where
     S: Service<Request = ServiceRequest, Response = ServiceResponse<B>, Error = Error>,

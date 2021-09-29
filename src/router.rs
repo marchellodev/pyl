@@ -31,7 +31,8 @@ pub fn router(cfg: &mut web::ServiceConfig) {
                         web::resource("/users")
                             .route(web::post().to(users::routes::login))
                             .route(web::get().to(users::routes::list))
-                            .route(web::put().to(users::routes::create)),
+                            .route(web::put().to(users::routes::create))
+                            .route(web::delete().to(users::routes::delete)),
                     ),
             )
             .service(web::scope("/data"))
