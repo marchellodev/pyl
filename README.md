@@ -1,3 +1,5 @@
+== THIS PROJECT IS (MOST PROBABLY) DISCONTINUED
+
 This project is in very early stages of development. PRs are welcomed :)
 
 **MVP Checklist**
@@ -7,3 +9,5 @@ This project is in very early stages of development. PRs are welcomed :)
   - [ ] Data endpoints
 - [ ] Web UI
 - [ ] Extensibility (Webassembly?)
+
+
